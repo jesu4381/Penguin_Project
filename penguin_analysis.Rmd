@@ -1,0 +1,161 @@
+---
+title: "penguin_analysis"
+format: html
+output:
+  html_document: default
+  pdf_document: default
+editor: visual
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+if (!require("Require")) {install.packages("Require"); require("Require")}
+library(Require)
+Require(c("tidyverse", "palmerpenguins", "janitor", "here", "renv", "ggplot2", "sjPlot", "car"))
+library(tidyverse)
+library(palmerpenguins)
+library(janitor)
+library(here)
+library(renv)
+library(ggplot2)
+library(sjPlot)
+library(car)
+```
+
+# **Question 1**
+
+```{r}
+echo = FALSE
+data <- (here("penguins_raw", "penguins_raw.csv"))
+write.csv(penguins_raw, here("data","penguins_raw.csv"))
+penguins_raw <- read.csv(here("data","penguins_raw.csv"))
+cleaning_penguin_columns <- function(raw_data){
+    print("removed empty columns and rows, cleaned column names, removed comments and delta columns, shortened penguin names, removed NAs from the dataset")
+  raw_data %>% 
+    select(-"Comments") %>%
+    select(-starts_with("Delta")) %>%
+    clean_names() %>%
+    na.omit() %>% 
+    remove_empty(c("rows","cols")) %>% 
+    mutate(species = case_when(
+        species == "Adelie Penguin (Pygoscelis adeliae)" ~ "Adelie",
+        species == "Chinstrap penguin (Pygoscelis antarctica)" ~ "Chinstrap",
+        species == "Gentoo penguin (Pygoscelis papua)" ~ "Gentoo"))}
+penguins_clean <- cleaning_penguin_columns(penguins_raw)
+write.csv(penguins_clean, here("data","penguins_clean.csv"))
+penguins_clean <- read_csv(here("data", "penguins_clean.csv"))
+penguins_clean <- na.omit(penguins_clean)
+bodymassflipperlength_plot <- ggplot(data = penguins_clean, aes(x = body_mass_g, y = flipper_length_mm, color = species)) +
+  geom_line(color = "black", linewidth = 1) +
+  geom_point(size = 1) + 
+  geom_smooth(method = "lm", se = FALSE) +
+  coord_cartesian(ylim = c(100, 300)) + 
+  labs(
+    title = "Body mass against flipper length",
+    x = "Body mass (g)",
+    y = "Flipper length (mm)",
+    color = "Penguin Species" 
+  ) + 
+  theme(legend.position = "bottom") +
+  theme(plot.title = element_text(face = "bold")) +
+  theme(
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 10)
+  )
+bodymassflipperlength_plot
+```
+
+The figure above is misleading in its presentation of the data primarily because it combines the data for all species simultaneously and presents it as continuous. Arranging all the body mass and flipper length data on a single graph means that adjacent data points from different species are represented together and connected by a line. This gives the false impression that, between connected points, the body mass is the only key variable that is changing, whereas in reality the species of the individuals is changing as well. This also has the potential to falsely exaggerate the trend, as it fails to account for the fact that some species may have greater average body mass or flipper length than others.
+
+As well as this, the y axis is too compressed to be able to effectively visualise the spread of the data, and the inclusion of multiple trend lines renders the significance of the species data in graph difficult to interpret.
+
+# **Question 2**
+
+**Introduction**
+
+Culmen length and culmen depth are two morphometric measurements associated with the shape of the bill. These have been known to influence its strength and maneuverability, and therefore affect the range of prey items available to the individual. By performing an analysis of culmen length and depth, it may reveal patterns in the dietary habits of the species.
+
+```{r}
+data <- (here("penguins_raw", "penguins_raw.csv"))
+write.csv(penguins_raw, here("data","penguins_raw.csv"))
+penguins_raw <- read.csv(here("data","penguins_raw.csv"))
+cleaning_penguin_columns <- function(raw_data){
+    print("removed empty columns and rows, cleaned column names, removed comments and delta columns, shortened penguin names, removed NAs from the dataset")
+  raw_data %>% 
+    select(-"Comments") %>%
+    select(-starts_with("Delta")) %>%
+    clean_names() %>%
+    na.omit() %>% 
+    remove_empty(c("rows","cols")) %>% 
+    mutate(species = case_when(
+        species == "Adelie Penguin (Pygoscelis adeliae)" ~ "Adelie",
+        species == "Chinstrap penguin (Pygoscelis antarctica)" ~ "Chinstrap",
+        species == "Gentoo penguin (Pygoscelis papua)" ~ "Gentoo"))}
+penguins_clean <- cleaning_penguin_columns(penguins_raw)
+write.csv(penguins_clean, here("data","penguins_clean.csv"))
+```
+
+**Hypothesis**
+
+Previous studies have suggested that Gentoo Penguins are deep water divers, whilst Chinstrap and Adelie Penguins are more shallow water specialists (Trivelpiece et al, 1987). This allows Gentoo Penguins to exploit a niche that is unavailable to other species, and as a result, deep water prey items like fish and squid make up a greater portion of its diet, compared to other species which feed more predominantly on krill (White and Conroy, 1975). This specialisation has been used to explain the narrower, longer bill shape of the Gentoo. The hypothesis is that stabilising selection towards a narrower bill structure will result in less variability in culmen depth across the population, relative to the Chinstrap and Adelie Penguins.
+
+**Stats method**
+
+Here, a Bartlett test was used to assess whether or not the variances differ within the data, and therefore suggest whether any one species is more specialised than the other. The results are show below
+
+**Results**
+
+```{r}
+penguins_clean <- read_csv(here("data", "penguins_clean.csv"))
+penguins_clean <- na.omit(penguins_clean)
+culmenlengthdepth_plot <- ggplot(data = penguins_clean, aes(x = culmen_length_mm, y = culmen_depth_mm, color = species)) +
+  geom_point(size = 2, alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Culmen Length vs. Culmen Depth by Species",
+    x = "Culmen Length (mm)",
+    y = "Culmen Depth (mm)",
+    color = "Penguin Species",
+    linetype = "Penguin Species"
+  ) +
+  theme(legend.position = "bottom") +
+  theme(plot.title = element_text(face = "bold")) +
+theme(
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 10)
+  )
+culmenlengthdepth_plot
+
+```
+
+```{r}
+bartlett_result <- bartlett.test(culmen_depth_mm ~ species, data = penguins_clean)
+statistic <- round(bartlett_result$statistic, 2)
+df <- bartlett_result$parameter
+p_value <- signif(bartlett_result$p.value, 3) 
+results_table <- data.frame(
+  Test = "Bartlett's Test",
+  Statistic = statistic,
+  DF = df,
+  P_Value = p_value,
+  Conclusion = ifelse(p_value < 0.05, "Variances differ (heterogeneous)", "Variances do not differ (homogeneous)")
+)
+results_table
+```
+
+**Discussion**
+
+The P value of 0.0568 is slightly greater than 0.05, so we can conclude that the variances between species do not differ at the 5% significance level. Although Gentoo feeding behaviour does show notable differences to that of Chinstrap and Adelie Penguins, this may not directly correspond to a strong selective pressure on Gentoos toward a particular bill structure. The similarity in variation may also be a result of the fact that the analysis did not account for colony, time of year, age, or other factors that could produce unrelated variance.
+
+**Conclusion**
+
+Gentoo Penguins have a proportionally longer, narrower bill than the other two species of penguin studied in the Palmer data set. Despite this, the analysis was unable to show that this adaptation exists in conjunction with a pattern of stabilising selection that reduces variation in bill structure.
+
+# **Question 3**
+
+a) https://github.com/jesu4381/Penguin_Project
+
+b) https://github.com/SundaScopsOwl/PenguinsAssessment
